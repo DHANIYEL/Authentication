@@ -5,8 +5,7 @@ import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 dotenv.config();
 
-// Sign In Function
-
+// Generate Access and Refresh Tokens
 const generateAccessToken = (userId) => {
   return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: "15m" });
 };
@@ -15,7 +14,7 @@ const generateRefreshToken = (userId) => {
   return jwt.sign({ userId }, process.env.JWT_REFRESH_SECRET, { expiresIn: "7d" });
 };
 
-
+// Sign In Function
 const signIn = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -46,15 +45,15 @@ const signIn = async (req, res) => {
         .json({ message: "Please verify your email before logging in" });
     }
 
-    // Generate a JWT token (expires in 1 hour)
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "1h",
-    });
+    // Generate Access and Refresh Tokens
+    const accessToken = generateAccessToken(user._id);
+    const refreshToken = generateRefreshToken(user._id);
 
-    // Send the token in the response
+    // Send the tokens in the response
     return res.status(200).json({
       message: "Login successful",
-      token,
+      accessToken,   // Access Token to be used for authentication
+      refreshToken,  // Refresh Token for session management
     });
   } catch (error) {
     console.error("Error during login:", error); // Detailed error logging
@@ -106,7 +105,7 @@ const signup = async (req, res) => {
 
     await newUser.save();
 
-    // Generate tokens
+    // Generate Access and Refresh Tokens
     const accessToken = generateAccessToken(newUser._id);
     const refreshToken = generateRefreshToken(newUser._id);
 
@@ -115,8 +114,8 @@ const signup = async (req, res) => {
 
     return res.status(201).json({
       message: "User signed up successfully. Please verify your email.",
-      accessToken,
-      refreshToken,
+      accessToken,   // Send access token
+      refreshToken,  // Send refresh token
     });
   } catch (error) {
     console.error(error);
@@ -160,6 +159,8 @@ const verifyEmail = async (req, res) => {
       .json({ message: "An error occurred during verification" });
   }
 };
+
+// Resend OTP for email verification
 const resendOTP = async (req, res) => {
   try {
     const { email } = req.body;
