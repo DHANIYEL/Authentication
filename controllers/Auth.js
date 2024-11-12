@@ -6,6 +6,16 @@ import dotenv from "dotenv";
 dotenv.config();
 
 // Sign In Function
+
+const generateAccessToken = (userId) => {
+  return jwt.sign({ userId }, process.env.JWT_SECRET, { expiresIn: "15m" });
+};
+
+const generateRefreshToken = (userId) => {
+  return jwt.sign({ userId }, process.env.JWT_REFRESH_SECRET, { expiresIn: "7d" });
+};
+
+
 const signIn = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -72,7 +82,7 @@ const signup = async (req, res) => {
     if (existingUser) {
       return res
         .status(400)
-        .json({ message: "User already exists with this email" });
+        .json({ message: "User already exists Please Verify the Email" });
     }
 
     // Hash the password
@@ -96,11 +106,17 @@ const signup = async (req, res) => {
 
     await newUser.save();
 
+    // Generate tokens
+    const accessToken = generateAccessToken(newUser._id);
+    const refreshToken = generateRefreshToken(newUser._id);
+
     // Send verification email with the code
     SendVerificationCode(newUser.email, verificationCode);
 
     return res.status(201).json({
       message: "User signed up successfully. Please verify your email.",
+      accessToken,
+      refreshToken,
     });
   } catch (error) {
     console.error(error);
@@ -109,6 +125,7 @@ const signup = async (req, res) => {
       .json({ message: "An error occurred during sign-up" });
   }
 };
+
 // OTP verification function to verify the code
 const verifyEmail = async (req, res) => {
   try {
