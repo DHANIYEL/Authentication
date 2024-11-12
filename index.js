@@ -57,25 +57,20 @@ app.get('/protected', isLoggedIn, (req, res) => {
 })
 
 app.get('/logout', (req, res) => {
-  req.logout((err) => {  // Pass a callback function to handle errors
+  // Clear JWT token stored in a cookie if applicable
+  res.clearCookie('auth_token'); // This clears the cookie with the JWT token
+
+  // Destroy the session if you are using session management (for example, for OAuth)
+  req.session.destroy((err) => {
     if (err) {
-      return res.status(500).json({ message: 'Failed to log out' });
+      return res.status(500).json({ message: 'Failed to destroy session' });
     }
 
-    // If using JWT tokens, also clear the token cookie from the client
-    res.clearCookie('auth_token'); // If you're storing JWT in cookies, clear it here
-
-    // End the session (if using sessions)
-    req.session.destroy((err) => {
-      if (err) {
-        return res.status(500).json({ message: 'Failed to destroy session' });
-      }
-      
-      // Redirect to home page or login page after logging out
-      res.redirect('/');
-    });
+    // After clearing the cookie and destroying the session, send the response
+    res.status(200).json({ message: 'Logged out successfully' });
   });
 });
+
 
 
 
