@@ -13,7 +13,9 @@ dotenv.config();
 const app = express();
 DbConnect();
 app.use(express.json());
-
+function isLoggedIn(req, res, next) {
+  req.user ? next() : res.sendStatus(401);
+}
 // Session setup
 app.use(session({
   secret: process.env.SESSION_SECRET,
@@ -40,25 +42,29 @@ app.get('/profile', authenticateToken, async (req, res) => {
   }
 });
 
-app.get('/auth/google', passport.authenticate('google', { 
-  scope: ['profile', 'email']
-}));
-
+app.get('/auth/google',
+  passport.authenticate('google', { scope: ['profile', 'email'] })
+);
 
 app.get('/auth/google/callback', 
-  passport.authenticate('google', { failureRedirect: '/' }), 
+  passport.authenticate('google', {
+    successRedirect: '/protected',
+    failureRedirect: '/' 
+    }), 
   (req, res) => {
     // After successful Google login, generate a JWT token for the authenticated user
     const token = jwt.sign({ userId: req.user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
     // Send the token and user information to the client
     res.send(
-       `Login successful, welcome ${req.user.name || req.user.displayName}!`, // Display the user's name
+       `Login successful, <h1>welcome ${req.user.name || req.user.displayName}!</h1>`, // Display the user's name
       // token: token, // Send the token back in the response body
     );
   }
 );
-
+app.get('/protected', isLoggedIn, (req, res) => {
+  res.send(`Welcome to the protected area, <h1>Welcome ${req.user.name || req.user.displayName}!</h1>`); // Display the user's name
+})
 
 
 const port = process.env.PORT || 8000;
