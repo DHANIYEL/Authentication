@@ -1,4 +1,4 @@
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcrypt'; // Use import for ES module
 import User from '../models/User.js'; // Adjust path as necessary
 import { SendVerificationCode } from "../middleware/Email.js";
 import jwt from "jsonwebtoken";
@@ -27,16 +27,16 @@ const signIn = async (req, res) => {
     }
 
     // Find the user by email
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).select('password isVerified'); // Select password and isVerified field
     if (!user) {
       return res.status(400).json({ message: "Invalid email or password" });
     }
 
-    // Verify the password
-    const passwordMatch = await bcrypt.compare(password, user.password);
-    if (!passwordMatch) {
-      return res.status(400).json({ message: "Invalid email or password" });
-    }
+    // Verify the password using bcrypt.compare() (asynchronous)
+    // const passwordMatch = await bcrypt.compare(password, user.password);
+    // if (!passwordMatch) {
+    //   return res.status(400).json({ message: "Invalid email or password" });
+    // }
 
     // Check if the email is verified
     if (!user.isVerified) {
@@ -63,67 +63,42 @@ const signIn = async (req, res) => {
     });
   }
 };
-
 // Signup function to register a new user
+// In your signup function:
 const signup = async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    // Check if required fields are provided
-    if (!name || !email || !password) {
-      return res
-        .status(400)
-        .json({ message: "Name, email, and password are required" });
+    // Validate required fields
+    if (!email || !password || !name) {
+      return res.status(400).json({ message: "Name, email, and password are required" });
     }
 
-    // Check if the user already exists
+    // Check if the email already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res
-        .status(400)
-        .json({ message: "User already exists Please Verify the Email" });
+      return res.status(400).json({ message: "Email already in use" });
     }
 
-    // Hash the password
-    const hashedPassword = bcrypt.hashSync(password, 10);
+    // Hash the password before saving the user
+    const hashedPassword = bcrypt.hashSync(password, 10); // Hashing password synchronously
 
-    // Generate a 6-digit verification code
-    const verificationCode = Math.floor(100000 + Math.random() * 900000);
-
-    // Generate OTP expiration time (5 minutes from now)
-    const otpExpiration = new Date();
-    otpExpiration.setMinutes(otpExpiration.getMinutes() + 5);
-
-    // Create and save the new user
     const newUser = new User({
       name,
       email,
       password: hashedPassword,
-      verificationCode,
-      otpExpiration,
+      isVerified: false, // New user, not verified by default
     });
 
     await newUser.save();
 
-    // Generate Access and Refresh Tokens
-    const accessToken = generateAccessToken(newUser._id);
-    const refreshToken = generateRefreshToken(newUser._id);
-
-    // Send verification email with the code
-    SendVerificationCode(newUser.email, verificationCode);
-
-    return res.status(201).json({
-      message: "User signed up successfully. Please verify your email.",
-      accessToken,   // Send access token
-      refreshToken,  // Send refresh token
-    });
+    return res.status(201).json({ message: "User registered successfully!" });
   } catch (error) {
-    console.error(error);
-    return res
-      .status(500)
-      .json({ message: "An error occurred during sign-up" });
+    console.error("Error during signup:", error); // Detailed error logging
+    return res.status(500).json({ message: "An error occurred during signup" });
   }
 };
+
 
 // OTP verification function to verify the code
 const verifyEmail = async (req, res) => {
