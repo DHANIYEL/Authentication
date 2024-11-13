@@ -42,6 +42,10 @@ app.get('/profile', authenticateToken, async (req, res) => {
   }
 });
 
+app.get('/', (req,res) => {
+  res.send(`<a href="auth/google">Sign In</a>`);
+})
+
 app.get('/auth/google',
   passport.authenticate('google', { scope: ['profile', 'email'] })
 );
